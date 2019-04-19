@@ -9,15 +9,35 @@ const app = express();
 
 const clientID = process.env.KEY
 const consumerSecret = process.env.SECRET
+let accessToken;
 app.use(express.static(__dirname));
 
 app.get('/account', (req,res) => {
   console.log('query: ', req.query);
   console.log(req.query.access_token);
   let token = req.query.access_token;
+  accessToken = token;
   request.get(`https://wbsapi.withings.net/measure?action=getmeas&access_token=${token}`/*`&startdate=[INT]&enddate=[INT]&offset=[INT]`*/, function(err, res, body) {
-    console.log('body: ', body);
-  })
+    let measures = JSON.parse(body).body.measuregrps.map(grp => {
+	return grp.measures.filter(measure => {
+		return (measure.type === 9 || measure.type === 10);
+	});
+  });
+});
+})
+
+app.get('/stats', (req,response) => {
+  request.get(`https://wbsapi.withings.net/measure?action=getmeas&access_token=${accessToken}`/*`&startdate=[INT]&enddate=[INT]&offset=[INT]`*/, function(err, res, body) {
+    let measures = JSON.parse(body).body.measuregrps.map(grp => {
+	return grp.measures.filter(measure => {
+		return (measure.type === 9 || measure.type === 10);
+	});
+  });
+	  console.log('measures: ', measures[0][0]);
+//	response.sendStatus(200);
+	response.json(JSON.parse(measures[0][0].value))
+});
+
 })
 
 app.get('/oauth/redirect', (req, res) => {
@@ -27,7 +47,7 @@ app.get('/oauth/redirect', (req, res) => {
       client_id:clientID,
       client_secret: consumerSecret,
       code: requestToken,
-    redirect_uri:`https://5f0b3afb.ngrok.io/oauth/redirect`
+    redirect_uri:`https://e34c8e2d.ngrok.io/oauth/redirect`
     }
   let formData = new FormData();
   for (var key in postData) {
